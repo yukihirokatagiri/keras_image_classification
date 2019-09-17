@@ -6,6 +6,7 @@ python image\create_random_image.py
 This script creates [red, green, blue] images and store them into 3 different directories following the keras's ImageDataGenerator directory rule.
 
 After running the script, you'll gain the directory tree as shown below:
+```
 images
 ├───test	(blue_0.png, greeen_0.png, red_0.png, blue_1.png, ...)
 ├───train
@@ -16,7 +17,7 @@ images
     ├───1	(red_0.png, red_1.png, red_2.png, ...)
     ├───2	(green_0.png, green_1.png, green_2.png, ...)
     └───3	(blue_0.png, blue_1.png, blue_2.png, ...)
-
+```
 As you see, train\1 directory represents red images dir, train\2 is for greens and train\3 is for blues. The keras's ImageDataGenerator automatically load train and valid's subdirectories to train a model. The train.py will use Resnet50 algorithm to train.
 
 The test.py will test the model created with train.py with test direcory's images.
