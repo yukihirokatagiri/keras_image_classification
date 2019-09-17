@@ -38,14 +38,14 @@ if __name__ == '__main__':
         bgr_img = cv.resize(bgr_img, (224, 224))
         rgb_img = cv.cvtColor(bgr_img, cv.COLOR_BGR2RGB)
         rgb_img = np.expand_dims(rgb_img, 0)
-        preds = model.predict(bgr_img)
+        preds = model.predict(rgb_img)
         prob = np.max(preds)
         class_id = np.argmax(preds) + 1
 
         correct_ans = 1
-        if "racoon_dog" in path:
+        if "green" in path:
             correct_ans = 2
-        elif "red_panda" in path:
+        elif "blue" in path:
             correct_ans = 3
 
         if class_id == correct_ans:

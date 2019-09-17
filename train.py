@@ -1,35 +1,20 @@
 import os
+import argparse
 import keras
 from keras.applications.resnet50 import ResNet50
 from keras.preprocessing.image import ImageDataGenerator
 from keras.callbacks import CSVLogger, ModelCheckpoint, EarlyStopping
 from keras.callbacks import ReduceLROnPlateau
 
-IMG_WIDTH = 224
-IMG_HEIGHT = 224
-
-# augmentation
-SHIFT_RANGE = 0.1
-ROTATION_RANGE = 10
-ZOOM_RANGE = 0.2
-H_FLIP = True
-
-CHANNELS = 3
-TRAIN_DIR = 'image/train'
-VALID_DIR = 'image/valid'
-VERBOSE = 1
-BATCH_SIZE = 8
-EPOCH = 10000
-PATIENCE = 50
-
 
 class Trainer:
-    def __init__(self):
+    def __init__(self, options):
+        self.options = options
         self.callbacks = None
         self.train_gen = None
         self.valid_gen = None
-        self.num_train_samples = Trainer.get_file_count(TRAIN_DIR)
-        self.num_valid_samples = Trainer.get_file_count(VALID_DIR)
+        self.num_train_samples = Trainer.get_file_count(self.options.train_dir)
+        self.num_valid_samples = Trainer.get_file_count(self.options.valid_dir)
         os.makedirs("models", exist_ok=True)
         os.makedirs("logs", exist_ok=True)
 
@@ -46,10 +31,11 @@ class Trainer:
                                          write_graph=True,
                                          write_images=True)
         log = CSVLogger('logs/training.log', append=False)
-        es = EarlyStopping('val_acc', patience=PATIENCE)
+        es = EarlyStopping('val_acc', patience=self.options.patience)
         lr = ReduceLROnPlateau('val_acc', factor=0.1,
-                               patience=int(PATIENCE / 4), VERBOSE=1)
-        model_names = 'models/model' + '.{epoch:02d}-{val_acc:.2f}.hdf5'
+                               patience=int(self.options.patience / 4),
+                               VERBOSE=1)
+        model_names = 'models/model.hdf5'
         mc = ModelCheckpoint(model_names, monitor='val_acc',
                              verbose=1, save_best_only=True)
 
@@ -63,21 +49,21 @@ class Trainer:
 
     def setup_generator(self):
         # prepare data augmentation configuration
-        train_idg = ImageDataGenerator(rotation_range=ROTATION_RANGE,
-                                       width_shift_range=SHIFT_RANGE,
-                                       height_shift_range=SHIFT_RANGE,
-                                       zoom_range=ZOOM_RANGE,
-                                       horizontal_flip=H_FLIP)
+        train_idg = ImageDataGenerator(rotation_range=self.options.rotate_range,
+                                       width_shift_range=self.options.shift_range,
+                                       height_shift_range=self.options.shift_range,
+                                       zoom_range=self.options.zoom_range,
+                                       horizontal_flip=self.options.horizontal_flip)
         valid_idg = ImageDataGenerator()
 
-        self.train_gen = train_idg.flow_from_directory(TRAIN_DIR,
-                                                       (IMG_WIDTH, IMG_HEIGHT),
-                                                       batch_size=BATCH_SIZE,
+        self.train_gen = train_idg.flow_from_directory(self.options.train_dir,
+                                                       (self.options.image_width, self.options.image_height),
+                                                       batch_size=self.options.batch_size,
                                                        class_mode='categorical'
                                                        )
-        self.valid_gen = valid_idg.flow_from_directory(VALID_DIR,
-                                                       (IMG_WIDTH, IMG_HEIGHT),
-                                                       batch_size=BATCH_SIZE,
+        self.valid_gen = valid_idg.flow_from_directory(self.options.valid_dir,
+                                                       (self.options.image_width, self.options.image_height),
+                                                       batch_size=self.options.batch_size,
                                                        class_mode='categorical'
                                                        )
 
@@ -92,14 +78,33 @@ class Trainer:
                       metrics=['accuracy'])
         model.fit_generator(
             self.train_gen,
-            steps_per_epoch=self.num_train_samples / BATCH_SIZE,
+            steps_per_epoch=self.num_train_samples / self.options.batch_size,
             validation_data=self.valid_gen,
-            validation_steps=self.num_valid_samples / BATCH_SIZE,
-            epochs=EPOCH,
+            validation_steps=self.num_valid_samples / self.options.batch_size,
+            epochs=self.options.epoch,
             callbacks=self.callbacks,
-            verbose=VERBOSE)
+            verbose=self.options.verbose)
 
+
+DEF_IMG_SIZE = 224
 
 if __name__ == "__main__":
-    t = Trainer()
+    parser = argparse.ArgumentParser(description='Train a resnet 50 model "\
+                                     "with your image dataset.')
+    parser.add_argument('--image_width', default=DEF_IMG_SIZE)
+    parser.add_argument('--image_height', default=DEF_IMG_SIZE)
+    parser.add_argument('--channels', default=3, type=int)
+    parser.add_argument('--shift_range', default=0.1, type=float)
+    parser.add_argument('--rotate_range', default=10, type=float)
+    parser.add_argument('--zoom_range', default=0.1, type=float)
+    parser.add_argument('--horizontal_flip', action='store_true')
+    parser.add_argument('--train_dir', default='image/train')
+    parser.add_argument('--valid_dir', default='image/valid')
+    parser.add_argument('--verbose', default=0, type=int)
+    parser.add_argument('--batch_size', default=8, type=int)
+    parser.add_argument('--epoch', default=1000, type=int)
+    parser.add_argument('--patience', default=5, type=int)
+    options = parser.parse_args()
+
+    t = Trainer(options)
     t.train()
